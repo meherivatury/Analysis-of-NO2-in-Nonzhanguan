@@ -1,0 +1,1 @@
+This folder contains the data manipulation and the neural network written in python. After 10-fold cross validation the accuracy was around 78% to predict the 4 danger categories.
