@@ -1,0 +1,293 @@
+---
+title: "Data Visualization"
+author: "Meher Ivatury"
+date: "10/6/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(gganimate)
+library(ggExtra)
+library(ggcorrplot)
+library(ggthemes)
+library(ggfortify)
+library(xts)
+library(RColorBrewer)
+library(scales)
+library(purrr)
+```
+
+```{r include=FALSE}
+airdata = read.csv("/Users/meherivatury/Desktop/Senior Year/Stat 443/Consulting Project/For Github/Corrected_Data_Analysis.csv")
+```
+
+```{r include=FALSE}
+theme_set(theme_bw())
+```
+
+```{r include=FALSE}
+# convert some variables as factors
+
+# levels of NO2
+airdata$NO2_levels[airdata$NO2 <= 40] = "Good"
+airdata$NO2_levels[airdata$NO2 > 40 & airdata$NO2 <= 80] = "Moderate"
+airdata$NO2_levels[airdata$NO2 > 80 & airdata$NO2 <= 120] = "Sensitive"
+airdata$NO2_levels[airdata$NO2 > 120] = "Unhealthy"
+airdata$NO2_levels = factor(airdata$NO2_levels)
+
+# levels of wind speed
+airdata$ws[airdata$WSPM <= 2] = "Low"
+airdata$ws[airdata$WSPM > 2 & airdata$WSPM <= 4] = "Medium"
+airdata$ws[airdata$WSPM > 4] = "High"
+airdata$ws = factor(airdata$ws, levels = c("Low", "Medium", "High"))
+
+# levels of temperature
+airdata$templevels[airdata$TEMP <= 5] = "Low"
+airdata$templevels[airdata$TEMP > 5 & airdata$TEMP <= 20] = "Medium"
+airdata$templevels[airdata$TEMP > 20] = "High"
+airdata$templevels = factor(airdata$templevels, levels = c("Low", "Medium", "High"))
+
+# levels of season
+airdata$season[airdata$month >= 3 & airdata$month <= 5] = "Spring"
+airdata$season[airdata$month >= 6 & airdata$month <= 8] = "Summer"
+airdata$season[airdata$month >= 9 & airdata$month <= 11] = "Fall"
+airdata$season[airdata$month == 1 | airdata$month == 2 | airdata$month == 12] = "Winter"
+airdata$season = factor(airdata$season, levels = c("Spring", "Summer", "Fall", "Winter"))
+```
+
+### Correlation Plot
+ 
+ - This plot using Pearson correlation coefficient to display the relationship between each pair of variables. *Red* refers to negative correlation and *blue* refers to positive correlation. The lighter the color is, the less related they are and vice versa. For instance, `NO2` is highly related to `CO` and `PM2.5` since the correlation coefficient is 0.8, very close to 1, for both of them. The -0.5 between `NO2` and `WSPM` stands for negative correlation. Higher wind speed always brings lower NO2. In terms of the characteristics of Pearson coefficient, we removed `year`, `day` as well as `wd` from this plot.
+  
+```{r echo=FALSE}
+correlations = round(cor(airdata[,c(3, 5:15, 17)]), 1)
+ggcorrplot(correlations,
+           type = "lower",
+           hc.order = TRUE,
+           lab = TRUE,
+           lab_size = 2.5,
+           colors = c("coral2", "white", "cornflowerblue"),
+           title = "Correlogram of Air Quality") +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank())
+```
+
+
+### The distribution of NO2 under different conditions
+ 
+ - We first divide the values of NO2 into 4 levels, known as `Good` (values less than or equal to 40), `Moderate` (values between 40 and 80), `Sensitive` (values between 80 and 120) and `Unhealthy` (values greater than 120). This plot display the distribution of `NO2` under different combination of `PM2.5` and `CO`. The various color of points represent each level of `NO2`, lighter color stands for better air quality and darker color stands for worse air quality. It is easy to tell that higher `PM2.5` and higher `CO` are more likely to result in *unhealthy air quality*, the highest level of `NO2`.
+ - As a matter of fact, NO2, CO and PM2.5 are the results of burning of fossil fuels and biomass, and we believe that's why they have positive correlations as shown in the plot. 
+
+```{r echo=FALSE}
+ggplot(data = airdata, aes(x = PM2.5, y = CO)) + 
+  geom_point(aes(col = NO2_levels)) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  scale_color_brewer(palette = "OrRd") +
+  labs(title = "The distribution of NO2 under PM2.5 and CO",
+       x = "PM2.5 (ug/m^3)", y = "CO (ug/m^3)",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+ 
+ - The graph below reveals the relationship among `NO2`, `PM10` and `WSPM` (wind speed). The majority of darker points are concentrate on lower right of the graph. The highest level of `NO2` is the consequence of high `PM10` and low `WSPM` (wind speed). 
+ - Since PM10 and NO2 have the same source, we believe that is the reason they are positively correlated. However, it's generally known that when the wind is strong, it will blow away all the pollutions and clear the air. In this way, NO2 and wind speed should be negatively correlated. The stronger the wind, the lower the NO2. 
+ 
+```{r echo=FALSE}
+ggplot(data = airdata, aes(x = PM10, y = WSPM)) + 
+  geom_point(aes(col = NO2_levels)) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  scale_color_brewer(palette = "OrRd") +
+  labs(title = "The distribution of NO2 under PM10 and wind speed",
+       x = "PM10 (ug/m^3)", y = "Wind Speed (m/s)",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+ - The distribution of `NO2` under the combination of `SO2` and `O3` is shown below. The lighter colored points are concentrate on the upper left part. The relationship between `O3` and `NO2` is negative, that is to say, Higher `O3` results in lower `NO2`. However, higher `SO2` results in higher `NO2` and in other words, `SO2` and `NO2` are positive related. 
+ - According to what we found about the characteristics of NO2, it will break up into NO and Oxygen atom when exposed to ultraviolet light and then the Oxygen atom will combine with oxygen in the air into O3. In this way, as NO2 decompose and decrease, O3 will increase. We would like to take this as the reason of the negative correlation between NO2 and O3. 
+ 
+```{r echo=FALSE}
+ggplot(data = airdata, aes(x = SO2, y = O3)) + 
+  geom_point(aes(col = NO2_levels)) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  scale_color_brewer(palette = "OrRd") +
+  labs(title = "The distribution of NO2 under SO2 and O3",
+       x = "SO2 (ug/m^3)", y = "O3 (ug/m^3)",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+### Distribution of NO2 in each month and season
+
+ - The two graphs below demonstrate the distribution of the 4 levels of `NO2` in each month and in each season. For instance, the distribution of *unhealthy* has a greater proportion in December than in July. The distribution of *sensitive* and *unhealthy* take up more percentage in fall and winter than in summer, that is to say, the air quality is worse in fall and winter. And obviously, *good air quality* takes up to 65% days in July and August. 
+ - Since Beijing is located at the northen hemisphere and it has the temperate monsoon climate, it has the climate pattern that winter cold with less preciptation and summer hot with more precipitation. On the one hand, winter in Beijing is cold and people always use heating in this season, which is powered by coal burning and it also result in higher NO2. This could be one of the reasons that NO2 is higher in winter than in summer. On the other hand, there is more sunlight in summer and it could help in decomposing NO2 to a great extent, which we believe is also the reason that NO2 is lower in summer. 
+
+```{r echo=FALSE}
+theme_set(theme_classic())
+
+ggplot(data = airdata, aes(month)) +
+  geom_bar(aes(fill = NO2_levels), width = 0.5) +
+  scale_fill_brewer(palette = "Purples") +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank()) +
+  scale_x_continuous(breaks = seq(1, 12, 1)) +
+  labs(title = "The distribution of NO2 in each month",
+       x = "Month",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+```{r echo=FALSE}
+ggplot(data = airdata, aes(season)) +
+  geom_bar(aes(fill = NO2_levels), width = 0.5) +
+  scale_fill_brewer(palette = "Purples") +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  theme(axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  labs(title = "The distribution of NO2 in each season",
+       x = "Season",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+### Distribution of NO2 under different temperature level
+
+ - We divided temperature into three levels, known as *low temperature* (less than or equal to 5°C), *medium temperature* (greater than 5°C and less than 20°C) as well as *high temperature* (greater than 20°C). The following two graphs reveal the distribution of `NO2` in different `temperatures`. The percentage of *sensitive* and *unhealthy* is greater in *low temperature* than in *high temperature* significantly. We might assume that `temperature` is highly related to the levels of `NO2`.
+
+```{r echo=FALSE}
+ggplot(data = airdata, aes(templevels)) +
+  geom_bar(aes(fill = NO2_levels), width = 0.5) +
+  # theme(axis.text.x = element_text(angle = 65, vjust = 0.6)) +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme(axis.title.y = element_blank(),
+        axis.text.y = element_blank()) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  labs(x = "Temperature Levels",
+       title = "The distribution of NO2 in each temperatrue level",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+```{r echo=FALSE}
+ggplot(airdata, aes(TEMP)) +
+  geom_histogram(aes(fill = NO2_levels), binwidth = 5, col = "black", size = 0.1) +
+  scale_fill_brewer(palette = "Pastel1") +
+  theme(axis.title.y = element_blank(),
+        axis.ticks.y = element_blank()) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  labs(x = "Temperature",
+       title = "The distribution of NO2 in each temperatrue level",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+### Density Plot 
+
+ - This is a density plot of each level of `NO2` across `temperatures`. Each color represents the distribution of each level. From this plot we can easily tell the distribution of each level and without regard to the sample size of them. For instance, the highest point of the density curve of *unhealthy air quality* presents at 0°C, that is to say, about 6% of observations that is defined as *unhealthy* shown near 0°C. Besides, the distribution of *good air quality* has a wide range but more concentrate on higher temperatures.
+
+```{r echo=FALSE}
+ggplot(airdata, aes(TEMP)) + 
+  geom_density(aes(fill = NO2_levels), alpha = 0.5) +
+  scale_fill_brewer(palette = "Pastel1") +
+  labs(x = "Temperature", y = "Density",
+       title = "The density of each level of NO2 on temperature",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+### Time Series Plot
+
+ - Computing the average `NO2` through each month in each year and exhibiting time series plot below. We can find a distinct pattern over years. Since the data of 2013 and 2017 are incomplete, we only keep the data of 2014, 2015 and 2016. The overall pattern is as same as we mentioned previously, the NO2 values are lower in summer and higher in winter. However, there is a specific feature of this plot, that is the clear decrease in February. Because the Chinese New Year is around this time, the majority of Chinese people would stay at home and spend time with their families. People will have a long vacation and reduce vehicle transportations. We would like to take this as the reason of the decline of NO2 in February. 
+
+```{r echo=FALSE}
+data2013 = airdata[airdata[,"year"] == 2013,]
+data2014 = airdata[airdata[,"year"] == 2014,]
+data2015 = airdata[airdata[,"year"] == 2015,]
+data2016 = airdata[airdata[,"year"] == 2016,]
+data2017 = airdata[airdata[,"year"] == 2017,]
+
+ts2013 = aggregate(data2013$NO2, by = list(timeID = data2013$month), FUN = mean)
+ts2014 = aggregate(data2014$NO2, by = list(timeID = data2014$month), FUN = mean)
+ts2015 = aggregate(data2015$NO2, by = list(timeID = data2015$month), FUN = mean)
+ts2016 = aggregate(data2016$NO2, by = list(timeID = data2016$month), FUN = mean)
+ts2017 = aggregate(data2017$NO2, by = list(timeID = data2017$month), FUN = mean)
+
+ts2013$year = 2013
+ts2014$year = 2014
+ts2015$year = 2015
+ts2016$year = 2016
+ts2017$year = 2017
+
+# new = rbind(ts2013, ts2014, ts2015, ts2016, ts2017)
+new = rbind(ts2014, ts2015, ts2016)
+new = as.data.frame(new)
+names(new)[2] = "values"
+```
+
+```{r echo=FALSE}
+ggplot(new, aes(x = timeID, y = values)) +
+  geom_line(aes(color = as.factor(year)), size = 1) +
+  scale_color_brewer(palette = "Set2") +
+  scale_x_discrete(limits = c("1","2","3","4","5","6","7","8","9","10","11","12")) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  labs(x = "Month", y = "Means",
+       title = "Average NO2 Values of Each Month in Each Year",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+ - Then we calculate the average of NO2 values through each hour in every year. The plot is shown below. However, since the data of 2013 begins at March and the data of 2017 only includes Janurary and February, the average NO2 values may be a little biased. For the second plot, we only keep the data of year 2014, 2015 and 2016.
+ - From this plot, we can find that the mean of NO2 is decrease year by year. It might be the result of the government attaches increasing importance to air quality in recent years. 
+
+```{r echo=FALSE}
+hour2013 = aggregate(data2013$NO2, by = list(timeID = data2013$hour), FUN = mean)
+hour2014 = aggregate(data2014$NO2, by = list(timeID = data2014$hour), FUN = mean)
+hour2015 = aggregate(data2015$NO2, by = list(timeID = data2015$hour), FUN = mean)
+hour2016 = aggregate(data2016$NO2, by = list(timeID = data2016$hour), FUN = mean)
+hour2017 = aggregate(data2017$NO2, by = list(timeID = data2017$hour), FUN = mean)
+
+hour2013$year = 2013
+hour2014$year = 2014
+hour2015$year = 2015
+hour2016$year = 2016
+hour2017$year = 2017
+
+hourdata_full = rbind(hour2013, hour2014, hour2015, hour2016, hour2017)
+hourdata_full = as.data.frame(hourdata_full)
+names(hourdata_full)[2] = "values"
+
+hourdata = rbind(hour2014, hour2015, hour2016)
+hourdata = as.data.frame(hourdata)
+names(hourdata)[2] = "values"
+```
+
+```{r echo=FALSE}
+ggplot(hourdata_full, aes(x = timeID, y = values)) +
+  geom_line(aes(color = as.factor(year)), size = 1) +
+  scale_color_brewer(palette = "Set2") +
+  scale_x_discrete(limits = seq(0, 23, by = 1)) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  labs(x = "Hours", y = "Means",
+       title = "Average NO2 Values of Every Hour",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+```{r echo=FALSE}
+ggplot(hourdata, aes(x = timeID, y = values)) +
+  geom_line(aes(color = as.factor(year)), size = 1) +
+  scale_color_brewer(palette = "Set2") +
+  scale_x_discrete(limits = seq(0, 23, by = 1)) +
+  theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank()) +
+  labs(x = "Hours", y = "Means",
+       title = "Average NO2 Values of Every Hour",
+       caption = "Source: https://archive.ics.uci.edu/ml/datasets/Beijing+Multi-Site+Air-Quality+Data")
+```
+
+### Simple Linear Regression Model
+
+```{r echo=FALSE}
+mod_all = lm(NO2 ~ as.factor(year) + season + hour + PM2.5 + PM10 +
+               SO2 + CO + O3 + TEMP + PRES + DEWP + RAIN + WSPM, 
+             data = airdata)
+summary(mod_all)
+```

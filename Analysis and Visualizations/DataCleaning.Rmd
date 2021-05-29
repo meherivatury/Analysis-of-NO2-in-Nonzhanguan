@@ -1,0 +1,198 @@
+---
+title: "Data Cleaning"
+author: "Meher Ivatury"
+date: "10/6/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+## Read in Data
+
+```{r}
+# read in data
+ap_data = read.csv(
+  "~/Users/meherivatury/Desktop/Senior Year/Stat 443/Consulting Project/For Github/PRSA_Data_Nongzhanguan_20130301-20170228 .csv"
+)
+
+# remove the first and the last columns
+ap_data = ap_data[2:17]
+
+# convert year, month and wd into factor variables
+ap_data = ap_data %>% mutate(year = as.factor(year),
+                             month = as.factor(month),
+                             wd = as.factor(wd))
+```
+
+## Substitute Missing Values
+
+```{r}
+# number of missing values in each variable
+NA_num = matrix(c(colnames(ap_data[5:16])), byrow = FALSE, ncol = 1)
+NA_num = cbind(NA_num,
+               c(sum(is.na(ap_data$PM2.5)), sum(is.na(ap_data$PM10)),
+                 sum(is.na(ap_data$SO2)), sum(is.na(ap_data$NO2)),
+                 sum(is.na(ap_data$CO)), sum(is.na(ap_data$O3)),
+                 sum(is.na(ap_data$TEMP)), sum(is.na(ap_data$PRES)),
+                 sum(is.na(ap_data$DEWP)), sum(is.na(ap_data$RAIN)),
+                 sum(is.na(ap_data$wd)), sum(is.na(ap_data$WSPM))))
+colnames(NA_num) = c("Variable Name", "Number of Missing Values")
+as.data.frame(NA_num)
+```
+
+```{r}
+x = 1:nrow(ap_data)
+
+# create an index to represent all NA values in NO2
+no2_na = is.na(ap_data$NO2)
+index_no2 = x[no2_na]
+
+# substitute missing values in NO2 with the value that one hour before
+for (i in index_no2) {
+  ap_data[i, "NO2"] = ap_data[i-1, "NO2"]
+}
+
+# check
+sum(is.na(ap_data$NO2))
+```
+
+```{r}
+# missing values in PM2.5
+pm25_na = is.na(ap_data$PM2.5)
+index_pm25 = x[pm25_na]
+
+for (i in index_pm25) {
+  ap_data[i, "PM2.5"] = ap_data[i-1, "PM2.5"]
+}
+```
+
+```{r}
+# missing values in PM10
+pm10_na = is.na(ap_data$PM10)
+index_pm10 = x[pm10_na]
+
+for (i in index_pm10) {
+  ap_data[i, "PM10"] = ap_data[i-1, "PM10"]
+}
+```
+
+```{r}
+# missing values in SO2
+so2_na = is.na(ap_data$SO2)
+index_so2 = x[so2_na]
+
+for (i in index_so2) {
+  ap_data[i, "SO2"] = ap_data[i-1, "SO2"]
+}
+```
+
+```{r}
+# missing values in CO
+co_na = is.na(ap_data$CO)
+index_co = x[co_na]
+
+for (i in index_co) {
+  ap_data[i, "CO"] = ap_data[i-1, "CO"]
+}
+```
+
+```{r}
+# missing values in O3
+o3_na = is.na(ap_data$O3)
+index_o3 = x[o3_na]
+
+for (i in index_o3) {
+  ap_data[i, "O3"] = ap_data[i-1, "O3"]
+}
+```
+
+```{r}
+# missing values in temp
+temp_na = is.na(ap_data$TEMP)
+index_temp = x[temp_na]
+
+for (i in index_temp) {
+  ap_data[i, "TEMP"] = ap_data[i-1, "TEMP"]
+}
+```
+
+```{r}
+# missing values in pres
+pres_na = is.na(ap_data$PRES)
+index_pres = x[pres_na]
+
+for (i in index_pres) {
+  ap_data[i, "PRES"] = ap_data[i-1, "PRES"]
+}
+```
+
+```{r}
+# missing values in dewp
+dewp_na = is.na(ap_data$DEWP)
+index_dewp = x[dewp_na]
+
+for (i in index_dewp) {
+  ap_data[i, "DEWP"] = ap_data[i-1, "DEWP"]
+}
+```
+
+```{r}
+# missing values in rain
+rain_na = is.na(ap_data$RAIN)
+index_rain = x[rain_na]
+
+for (i in index_rain) {
+  ap_data[i, "RAIN"] = ap_data[i-1, "RAIN"]
+}
+```
+
+```{r}
+# missing values in wd
+wd_na = is.na(ap_data$wd)
+index_wd = x[wd_na]
+
+for (i in index_wd) {
+  ap_data[i, "wd"] = ap_data[i-1, "wd"]
+}
+```
+
+```{r}
+# missing values in wspm
+wspm_na = is.na(ap_data$WSPM)
+index_wspm = x[wspm_na]
+
+for (i in index_wspm) {
+  ap_data[i, "WSPM"] = ap_data[i - 1, "WSPM"]
+}
+```
+
+```{r}
+NA_num_after = matrix(c(colnames(ap_data[5:16])), byrow = FALSE, ncol = 1)
+NA_num_after = cbind(NA_num_after,
+                     c(
+                       sum(is.na(ap_data$PM2.5)),
+                       sum(is.na(ap_data$PM10)),
+                       sum(is.na(ap_data$SO2)),
+                       sum(is.na(ap_data$NO2)),
+                       sum(is.na(ap_data$CO)),
+                       sum(is.na(ap_data$O3)),
+                       sum(is.na(ap_data$TEMP)),
+                       sum(is.na(ap_data$PRES)),
+                       sum(is.na(ap_data$DEWP)),
+                       sum(is.na(ap_data$RAIN)),
+                       sum(is.na(ap_data$wd)),
+                       sum(is.na(ap_data$WSPM))
+                     ))
+colnames(NA_num_after) = c("Variable Name", "Number of Missing Values")
+as.data.frame(NA_num_after)
+```
